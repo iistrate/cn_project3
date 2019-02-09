@@ -26,9 +26,10 @@ class DistanceVector(Node):
         specific to a DV node is done here.'''
 
         super(DistanceVector, self).__init__(name, topolink, outgoing_links, incoming_links)
-        
         #TODO: Create any necessary data structure(s) to contain the Node's internal state / distance vector data    
-    
+        self.in_state = dict()
+        self.in_state["vector"]=["{name}{distance}".format(name=self.name, distance=0)]
+        self.in_state["is_updated"]=True
 
     def send_initial_messages(self):
         ''' This is run once at the beginning of the simulation, after all
@@ -41,6 +42,9 @@ class DistanceVector(Node):
 
         # TODO - Each node needs to build a message and send it to each of its neighbors
         # HINT: Take a look at the skeleton methods provided for you in Node.py
+        for node in self.incoming_links:
+            message = (self.name, "{node_name}{distance_cost}".format(node_name=self.name, distance_cost=node.weight))
+            self.send_msg(message, node.name)
 
 
     def process_BF(self):
@@ -51,12 +55,21 @@ class DistanceVector(Node):
         # Implement the Bellman-Ford algorithm here.  It must accomplish two tasks below:
         # TODO 1. Process queued messages       
         for msg in self.messages:            
-            pass
-        
+            received_from, vector = msg
+            self.in_state['vector'].append(vector)
+
+        #adding a node for the 1st time
+       
+        print self.name, self.in_state
+
         # Empty queue
         self.messages = []
 
         # TODO 2. Send neighbors updated distances               
+        if self.in_state['is_updated']:
+           pass 
+        # set to  off updated switch
+        self.in_state['is_updated']=False
 
 
     def log_distances(self):
@@ -71,5 +84,6 @@ class DistanceVector(Node):
         NOTE: A0 shows that the distance to self is 0 '''
         
         # TODO: Use the provided helper function add_entry() to accomplish this task (see helpers.py).
-        # An example call that which prints the format example text above (hardcoded) is provided.        
-        add_entry("A", "A0,B1,C2")        
+        # An example call that which prints the format example text above (hardcoded) is provided. 
+        add_entry(self.name, ','.join(self.in_state['vector']))
+        #add_entry("A", "A0,B1,C2")        
