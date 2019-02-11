@@ -18,7 +18,6 @@
 from Node import *
 from helpers import *
 import re
-import time
 
 class DistanceVector(Node):
     
@@ -44,10 +43,8 @@ class DistanceVector(Node):
 
         # TODO - Each node needs to build a message and send it to each of its neighbors
         # HINT: Take a look at the skeleton methods provided for you in Node.py
-        #print("node {} incoming {}".format(self.name, [n.name for n in self.incoming_links]))
         for node in self.incoming_links:
             message = (self.name, "{node_name}{distance_cost}".format(node_name=self.name, distance_cost=0))
-#            print("Initial send from {} to {} {}".format(self.name, node.name, message))
             self.send_msg(message, node.name)
 
 
@@ -57,10 +54,10 @@ class DistanceVector(Node):
         messages that need to be sent to other nodes as a result are sent. '''
         # Implement the Bellman-Ford algorithm here.  It must accomplish two tasks below:
         # TODO 1. Process queued messages
-        for msg in self.messages:            
-            
+        vector = set(["{}{}".format(node, self.in_state["nodes"][node]) for node in self.in_state["nodes"]])
+        vector_copy = vector.copy()
+        for msg in self.messages:                        
             received_from, vector = msg
-
             for vector_bit in vector.split(','):
                 node, weight, _ = re.split(r'(-?[0-9]+)', vector_bit)
                 
@@ -69,41 +66,34 @@ class DistanceVector(Node):
                 if node not in self.in_state["nodes"].keys():
                     # if node is a direct neighbor
                     if node in [n.name for n in self.outgoing_links]:
-#                        print node, "in outgoing", [n.name for n in self.outgoing_links], " and its weight is ", int(self.get_outgoing_neighbor_weight(node))
                         self.in_state["nodes"][node] = int(self.get_outgoing_neighbor_weight(node))
-#                        print self.in_state["nodes"][node], int(self.get_outgoing_neighbor_weight(node)), self.in_state["nodes"]
                     else:
-#                        print node, "not in ", self.in_state["nodes"].keys(), " rcv from w ", 
-                        self.in_state["nodes"][received_from], " message weight is ", weight                            
                         self.in_state["nodes"][node] = int(weight) + self.in_state["nodes"][received_from]
 
-                    self.in_state["is_updated"] = True
                 # if we already know of the node
                 else:
-                    # weight received is smaller (shorter path)
-                    if self.in_state["nodes"][node] == -99:
-                        continue
-                    if int(weight) <= -99:
-                        self.in_state["nodes"][node] = -99                          
-                        self.in_state["is_updated"] = True
-                    elif int(weight) + self.in_state["nodes"][received_from] < self.in_state["nodes"][node]:
-                        self.in_state["nodes"][node] = int(weight) + self.in_state["nodes"][received_from]
-                        self.in_state["is_updated"] = True
+                    n_w = self.get_outgoing_neighbor_weight(received_from)
+                    try:
+                        n_w = int(n_w) + int(weight)
+                        if int(weight) <= -99:
+                            self.in_state["nodes"][node] = -99                         
+                        elif n_w <  self.in_state["nodes"][node]:
+                            self.in_state["nodes"][node] = n_w
+                    except BaseException, e:
+                        pass
    
-#        print "done processing ", self.name, self.in_state
         # Empty queue
         self.messages = []
-
-        # TODO 2. Send neighbors updated distances               
-        if self.in_state['is_updated']:
-            
+        
+        vector = set(["{}{}".format(node, self.in_state["nodes"][node]) for node in self.in_state["nodes"]])
+        # TODO 2. Send neighbors updated distances              
+        if vector - vector_copy:
             for node in self.incoming_links:
                message = (self.name, ','.join(["{}{}".format(n, self.in_state["nodes"][n]) for n in self.in_state["nodes"]]))
-#               print "sending messagee to ", node.name, message
                self.send_msg(message, node.name)
             
             self.in_state['is_updated'] = False
-##        raw_input()
+#        raw_input()
 
     def log_distances(self):
         ''' This function is called immedately after process_BF each round.  It 
