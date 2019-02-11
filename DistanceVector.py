@@ -31,7 +31,6 @@ class DistanceVector(Node):
         #TODO: Create any necessary data structure(s) to contain the Node's internal state / distance vector data    
         self.in_state = dict()
         self.in_state["nodes"]={"{}".format(self.name):0}
-        self.in_state["vector"]=set(["{name}{distance}".format(name=self.name, distance=0)])
         self.in_state["is_updated"]=False
 
     def send_initial_messages(self):
@@ -48,7 +47,7 @@ class DistanceVector(Node):
         #print("node {} incoming {}".format(self.name, [n.name for n in self.incoming_links]))
         for node in self.incoming_links:
             message = (self.name, "{node_name}{distance_cost}".format(node_name=self.name, distance_cost=0))
-            print("Initial send from {} to {} {}".format(self.name, node.name, message))
+#            print("Initial send from {} to {} {}".format(self.name, node.name, message))
             self.send_msg(message, node.name)
 
 
@@ -58,57 +57,40 @@ class DistanceVector(Node):
         messages that need to be sent to other nodes as a result are sent. '''
         # Implement the Bellman-Ford algorithm here.  It must accomplish two tasks below:
         # TODO 1. Process queued messages
-        print
-        print self.name, self.in_state 
-        print self.name, "received ", self.messages
         for msg in self.messages:            
             
             received_from, vector = msg
 
             for vector_bit in vector.split(','):
                 node, weight, _ = re.split(r'(-?[0-9]+)', vector_bit)
-                # if we do not  have the node in our table
+                
+                if node == self.name:
+                    continue
                 if node not in self.in_state["nodes"].keys():
                     # if node is a direct neighbor
                     if node in [n.name for n in self.outgoing_links]:
-                        print node, "in outgoing", [n.name for n in self.outgoing_links], " and its weight is ", int(self.get_outgoing_neighbor_weight(node))
+#                        print node, "in outgoing", [n.name for n in self.outgoing_links], " and its weight is ", int(self.get_outgoing_neighbor_weight(node))
                         self.in_state["nodes"][node] = int(self.get_outgoing_neighbor_weight(node))
-                        print self.in_state["nodes"][node], int(self.get_outgoing_neighbor_weight(node)), self.in_state["nodes"]
+#                        print self.in_state["nodes"][node], int(self.get_outgoing_neighbor_weight(node)), self.in_state["nodes"]
                     else:
-                        if node != self.name:
-                            print node, "not in ", self.in_state["nodes"].keys(), " rcv from w ", 
-                            self.in_state["nodes"][received_from], " message weight is ", weight                            
-                            self.in_state["nodes"][node] = int(weight) + self.in_state["nodes"][received_from]
+#                        print node, "not in ", self.in_state["nodes"].keys(), " rcv from w ", 
+                        self.in_state["nodes"][received_from], " message weight is ", weight                            
+                        self.in_state["nodes"][node] = int(weight) + self.in_state["nodes"][received_from]
 
                     self.in_state["is_updated"] = True
                 # if we already know of the node
                 else:
                     # weight received is smaller (shorter path)
-                    if (int(weight) + self.in_state["nodes"][received_from] < self.in_state["nodes"][node]) and (node not in [n.name for n in self.outgoing_links]):
-                        self.in_state["nodes"][node] = int(weight) + self.in_state["nodes"][received_from]
-                    # path is negative
-                        if int(weight) < 0:
-                            self.in_state["nodes"][node] = int(weight)
+                    if self.in_state["nodes"][node] == -99:
+                        continue
+                    if int(weight) <= -99:
+                        self.in_state["nodes"][node] = -99                          
                         self.in_state["is_updated"] = True
-
-#                if node in [n.name for n in self.outgoing_links]:
-#                    weight = int(self.get_outgoing_neighbor_weight(node))
-#                    if weight != self.in_state["nodes"].get(node, float("Inf")):
-#                        self.in_state["nodes"][node] = int(weight)
-#                        self.in_state['is_updated'] = True
-#                        print "updated ", node, self.in_state["nodes"][node]
-#                elif node == self.name:
-#                    continue # we don't update our current node's distance
-#                else:
-#                    weight = int(weight)
-                    # check if the weight is already stored and equal to our vector
-#                    if weight != self.in_state['nodes'].get(node, float("Inf")):
-#                        print msg
-#                        self.in_state["nodes"][node] = weight + self.in_state["nodes"][received_from]
-#                        self.in_state['is_updated'] = True
-#                        print node, " switch updated to ", self.in_state["nodes"][node]
+                    elif int(weight) + self.in_state["nodes"][received_from] < self.in_state["nodes"][node]:
+                        self.in_state["nodes"][node] = int(weight) + self.in_state["nodes"][received_from]
+                        self.in_state["is_updated"] = True
    
-        print "done processing ", self.name, self.in_state
+#        print "done processing ", self.name, self.in_state
         # Empty queue
         self.messages = []
 
@@ -117,11 +99,11 @@ class DistanceVector(Node):
             
             for node in self.incoming_links:
                message = (self.name, ','.join(["{}{}".format(n, self.in_state["nodes"][n]) for n in self.in_state["nodes"]]))
-               print "sending messagee to ", node.name, message
+#               print "sending messagee to ", node.name, message
                self.send_msg(message, node.name)
             
             self.in_state['is_updated'] = False
-        raw_input()
+##        raw_input()
 
     def log_distances(self):
         ''' This function is called immedately after process_BF each round.  It 
